@@ -1,0 +1,37 @@
+# 服务端配置 (Spring Boot Web 相关)
+server:
+  port: 8080
+  servlet:
+    session:
+      timeout: 5m # 会话有效期 5 分钟
+
+
+# Spring 核心配置
+spring:
+  datasource: # MySQL 数据源配置
+    url: jdbc:mysql://localhost:3306/pai?useSSL=false&serverTimezone=UTC
+    username: root
+    password: yjxsz2001
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  web:
+    resources:
+      static-locations: file:///D:/Server_Data/Paicoding/Image/ # 静态资源存储路径（相对路径）
+  mvc:
+    static-path-pattern: /images/** #静态资源路径
+  servlet:
+    multipart:
+      max-file-size: 4MB
+      max-request-size: 10MB
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true # 下划线转驼峰
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # 打印 SQL 日志到控制台
+
+# 日志配置
+logging:
+  level:
+    root: info # 默认日志级别
+    com.github.paicoding.forum: debug # 项目包下的日志级别
+
