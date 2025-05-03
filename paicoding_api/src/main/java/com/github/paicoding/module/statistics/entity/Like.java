@@ -25,14 +25,19 @@ public class Like {
     private Long userId;
 
     /**
-     * 文章 ID，外键关联 articles(id)
+     * 实体 ID
      */
-    @NotNull(message = "文章 ID 不能为空")
-    private Long articleId;
+    @NotNull(message = "ID 不能为空")
+    private Long id;
+
+    /**
+     * 点赞的类型(文章 or 评论)
+     */
+    private String likeType;
+
 
     /**
      * 创建时间
      */
-    @NotNull(message = "创建时间不能为空")
     private LocalDateTime createTime;
 }

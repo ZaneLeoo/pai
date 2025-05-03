@@ -3,11 +3,10 @@ package com.github.paicoding.module.user.web;
 import com.github.paicoding.common.entity.Response;
 import com.github.paicoding.module.user.entity.User;
 import com.github.paicoding.module.user.service.UserService;
+import com.github.paicoding.module.user.vo.UserHomeVO;
 import jakarta.annotation.Resource;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * @author Zane Leo
@@ -32,4 +31,25 @@ public class UserController {
         return Response.success("登录成功!🎉🎉",loginUser);
     }
 
+    @PostMapping("/logout")
+    public Response<String> logout() {
+        userService.logout();
+        return Response.success("退出登录成功");
+    }
+
+    @GetMapping("/home")
+    public Response<UserHomeVO> getUserHome(@RequestParam Long userId) {
+        UserHomeVO vo = userService.getUserHomeData(userId);
+        return Response.success(vo);
+    }
+    
+    @PutMapping("/profile")
+    public Response<User> updateProfile(@RequestBody User userProfile) {
+        // 从Spring Security上下文获取当前登录用户
+        User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        // 设置用户ID，确保只能修改自己的资料
+        userProfile.setId(currentUser.getId());
+        User updatedUser = userService.updateUserProfile(userProfile);
+        return Response.success("资料更新成功!🎉🎉", updatedUser);
+    }
 }

@@ -1,6 +1,7 @@
 package com.github.paicoding.module.article.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.github.paicoding.module.tag.entity.Tag;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -68,21 +69,42 @@ public class Article {
     /**
      * 发布时间
      */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm",timezone = "GMT+8")
     private LocalDateTime publishTime;
 
     /**
      * 创建时间
      */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm",timezone = "GMT+8")
     private LocalDateTime createTime;
 
     /**
      * 更新时间
      */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm",timezone = "GMT+8")
     private LocalDateTime updateTime;
 
     /**
      * 文章标签列表 (限制只能选择3个)
      */
     @TableField(exist = false)
-    private List<Tag> tags;
+    private List<Long> tags;
+
+    /**
+     * 文章标签实体列表，用于前端展示
+     */
+    @TableField(exist = false)
+    private List<Tag> resultTags;
+
+    /**
+     * 文章点赞数
+     */
+    @TableField(exist = false)
+    private Integer likes;
+
+    /**
+     * 文章评论数
+     */
+    @TableField(exist = false)
+    private Integer comments;
 }

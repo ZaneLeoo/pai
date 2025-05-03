@@ -2,12 +2,20 @@ package com.github.paicoding.module.comment.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.github.paicoding.common.config.RabbitMQConfig;
+import com.github.paicoding.common.constants.ScoreConstants;
+import com.github.paicoding.common.util.mq.MQUtil;
+import com.github.paicoding.module.article.entity.Article;
+import com.github.paicoding.module.article.mapper.ArticleMapper;
 import com.github.paicoding.module.comment.entity.Comment;
 import com.github.paicoding.module.comment.mapper.CommentMapper;
 import com.github.paicoding.module.comment.service.CommentService;
+import com.github.paicoding.module.notification.constants.NotificationConstants;
+import com.github.paicoding.module.notification.dto.NotificationMessage;
+import com.github.paicoding.module.rank.dto.ScoreMessage;
 import com.github.paicoding.module.user.entity.User;
 import com.github.paicoding.module.user.mapper.UserMapper;
-import jakarta.annotation.Resource;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -16,18 +24,74 @@ import java.util.stream.Collectors;
 
 /**
  * @author Zane Leo
- * @date 2025/3/27 09:59
+ * @date 2025/3/27 09:58
  */
 @Service
+@RequiredArgsConstructor
 public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> implements CommentService {
 
-    @Resource
-    private UserMapper userMapper;
+    private final UserMapper userMapper;
+    private final ArticleMapper articleMapper;
+    private final MQUtil mqUtil;
 
     @Override
     public void addComment(Comment comment) {
+        // 1.保存评论
         comment.setCreateTime(LocalDateTime.now());
         save(comment);
+        
+        // 2.发送积分消息
+        mqUtil.sendMessage(
+                RabbitMQConfig.USER_ACTION_EXCHANGE, 
+                "score.comment", 
+                ScoreMessage.builder()
+                        .userId(comment.getUserId())
+                        .score(ScoreConstants.ScoreRule.COMMENT_ARTICLE)
+                        .action("comment")
+                        .resourceId(comment.getArticleId())
+                        .build()
+        );
+
+        // 3.发送评论通知
+        Article article = articleMapper.selectById(comment.getArticleId());
+        User commenter = userMapper.selectById(comment.getUserId());
+        
+        if (article != null && !article.getAuthorId().equals(comment.getUserId())) {
+            // 发送通知给文章作者
+            mqUtil.sendMessage(
+                    RabbitMQConfig.NOTIFICATION_EXCHANGE,
+                    "notification.comment",
+                    NotificationMessage.builder()
+                            .type(NotificationConstants.Type.COMMENT)
+                            .senderId(comment.getUserId())
+                            .receiverId(article.getAuthorId())
+                            .title("收到新评论")
+                            .content(commenter.getUsername() + " 评论了你的文章《" + article.getTitle() + "》")
+                            .resourceId(comment.getArticleId())
+                            .resourceType(NotificationConstants.ResourceType.ARTICLE)
+                            .build()
+            );
+        }
+
+        // 4.如果是回复评论，发送通知给被回复者
+        if (comment.getParentId() != null) {
+            Comment parentComment = getById(comment.getParentId());
+            if (parentComment != null && !parentComment.getUserId().equals(comment.getUserId())) {
+                mqUtil.sendMessage(
+                        RabbitMQConfig.NOTIFICATION_EXCHANGE,
+                        "notification.comment",
+                        NotificationMessage.builder()
+                                .type(NotificationConstants.Type.COMMENT)
+                                .senderId(comment.getUserId())
+                                .receiverId(parentComment.getUserId())
+                                .title("收到新回复")
+                                .content(commenter.getUsername() + " 回复了你的评论")
+                                .resourceId(comment.getId())
+                                .resourceType(NotificationConstants.ResourceType.COMMENT)
+                                .build()
+                );
+            }
+        }
     }
 
     @Override

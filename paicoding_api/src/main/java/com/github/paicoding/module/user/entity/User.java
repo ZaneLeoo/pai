@@ -84,4 +84,10 @@ public class User {
      */
     @TableField(exist = false)
     private String token;
+
+    /**
+     * 判断是否关注用户(方便进行关系判定)
+     */
+    @TableField(exist = false)
+    private boolean followed;
 }

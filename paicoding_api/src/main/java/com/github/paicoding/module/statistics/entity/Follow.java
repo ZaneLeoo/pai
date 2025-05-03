@@ -31,6 +31,11 @@ public class Follow {
     private Long followedId;
 
     /**
+     * 关注类型(文章 or 用户)
+     */
+    private String followType;
+
+    /**
      * 创建时间
      */
     @NotNull(message = "创建时间不能为空")

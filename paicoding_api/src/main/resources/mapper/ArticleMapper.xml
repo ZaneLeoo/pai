@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.github.paicoding.module.article.mapper.ArticleMapper">
+    <resultMap id="ArticleResultMap" type="com.github.paicoding.module.article.entity.Article">
+        <id property="id" column="id" />
+        <result property="authorId" column="author_id" />
+        <result property="title" column="title" />
+        <result property="summary" column="summary" />
+        <result property="cover" column="cover_image" />
+        <result property="content" column="content" />
+        <result property="status" column="status" />
+        <result property="publishTime" column="publish_time" />
+        <result property="createTime" column="create_time" />
+        <result property="updateTime" column="update_time" />
+        <result property="likes" column="like_count" />
+        <result property="comments" column="comment_count" />
+    </resultMap>
+
+    <!-- 定义公共列的 SQL 片段 -->
+    <sql id="articleColumns">
+        a.id,
+        a.author_id,
+        a.title,
+        a.summary,
+        a.cover_image,
+        a.content,
+        a.status,
+        a.publish_time,
+        a.create_time,
+        a.update_time,
+        (SELECT COUNT(*) FROM likes WHERE id = a.id) AS like_count,
+        (SELECT COUNT(*) FROM comments WHERE article_id = a.id) AS comment_count
+    </sql>
+
+    <select id="getArticlesWithLikeCount" resultMap="ArticleResultMap">
+        SELECT
+        <include refid="articleColumns" />
+        FROM articles AS a
+        <where>
+            <if test="articleIds != null">
+                a.id IN
+                <foreach collection="articleIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            </if>
+        </where>
+        ORDER BY like_count DESC
+        <if test="limit != -1">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <select id="getArticleList" resultMap="ArticleResultMap">
+        SELECT
+        <include refid="articleColumns" />
+        FROM articles AS a
+        <where>
+            <if test="articleIds != null and articleIds.size() > 0">
+                a.id IN
+                <foreach collection="articleIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="getById" resultMap="ArticleResultMap">
+        SELECT
+        <include refid="articleColumns" />
+        FROM articles AS a
+        WHERE a.id = ${id}
+    </select>
+</mapper>
