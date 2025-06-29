@@ -57,7 +57,7 @@ public interface ArticleService extends IService<Article> {
     List<ArticleListItem> getTopArticleList();
 
     /**
-     * 根据 tagId 返回对应的数据
+     * 根据 tagId(主题) 返回对应的数据
      * @param tagId tagId
      * @return  对应的页面数据
      */

@@ -2,7 +2,10 @@ package com.github.paicoding.module.user.service.impl;
 
 import cn.hutool.crypto.digest.MD5;
 import cn.hutool.jwt.JWTUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.paicoding.common.exception.BusinessException;
 import com.github.paicoding.common.util.user.AutoFillingAvatar;
@@ -17,14 +20,24 @@ import com.github.paicoding.module.statistics.entity.Like;
 import com.github.paicoding.module.statistics.mapper.FollowMapper;
 import com.github.paicoding.module.statistics.service.FavoriteService;
 import com.github.paicoding.module.statistics.service.LikeService;
+import com.github.paicoding.module.user.dto.UserSearchParam;
+import com.github.paicoding.module.user.entity.Permission;
+import com.github.paicoding.module.user.entity.RolePermission;
 import com.github.paicoding.module.user.entity.User;
+import com.github.paicoding.module.user.entity.UserRole;
+import com.github.paicoding.module.user.mapper.PermissionMapper;
+import com.github.paicoding.module.user.mapper.RolePermissionMapper;
 import com.github.paicoding.module.user.mapper.UserMapper;
+import com.github.paicoding.module.user.mapper.UserRoleMapper;
 import com.github.paicoding.module.user.service.UserService;
 import com.github.paicoding.module.user.vo.UserHomeVO;
+import com.github.paicoding.module.user.vo.UserLoginVO;
+import com.github.paicoding.module.user.vo.UserRoleVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -41,6 +54,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private final FavoriteService favoriteService;
     private final ArticleMapper articleMapper;
     private final CommentService commentService;
+    private final UserRoleMapper userRoleMapper;
+    private final RolePermissionMapper rolePermissionMapper;
+    private final PermissionMapper permissionMapper;
 
     private final MD5 md5 = new MD5();
     private static final byte[] SECRET_KEY = "pai-coding".getBytes();
@@ -55,14 +71,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException("用户名已存在,请重新输入!");
         }
         // MD5加密
+        if (user.getPassword() == null){
+            user.setPassword("123456");
+        }
         user.setPassword(md5.digestHex16(user.getPassword()));
-        user.setCreateTime(LocalDateTime.now());
+        user.setCreateTime(LocalDate.now());
         user.setAvatar(AutoFillingAvatar.getRandomAvatar(user.getGender()));
         save(user);
     }
 
     @Override
-    public User login(String username, String password) {
+    public UserLoginVO login(String username, String password) {
+        // 1.前置校验
         QueryWrapper<User> wrapper = new QueryWrapper<User>().eq("username", username);
         User user = getOne(wrapper);
         if (user == null) {
@@ -71,6 +91,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!md5.digestHex16(password).equals(user.getPassword())) {
             throw new BusinessException("密码错误,请重新输入");
         }
+
+        // 2.生成JWT并返回
         // 创建 JWT
         HashMap<String, Object> payload = new HashMap<>();
         payload.put("user-id", user.getId());   // 用户标识
@@ -83,13 +105,28 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 返回用户信息和Token给前端
         user.setToken(token);
 
-        // 加入
-        return user;
+        // 3.返回用户拥有的权限标志
+        Set<Permission> permissions = getUserPermissions(user.getId());
+
+        // 4.返回路由和权限的map
+        Map<String, String> routeMap = getRouteMap();
+
+        // 5.构建VO返回
+        UserLoginVO vo = new UserLoginVO();
+        vo.setUser(user);
+        vo.setPermissions(permissions);
+        vo.setRouteMap(routeMap);
+        return vo;
     }
 
     @Override
     public void logout() {
         // 空方法,退出逻辑暂时不需要实现什么
+    }
+
+    @Override
+    public void updateUser(User user) {
+        updateById(user);
     }
 
     @Override
@@ -101,17 +138,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         } catch (Exception e) {
             // 用户未登录，忽略
         }
-        
+
         // 获取最近注册的用户作为推荐作者
         QueryWrapper<User> wrapper = new QueryWrapper<>();
         wrapper.orderByDesc("create_time");
-        wrapper.last("limit 5");    
-        
+        wrapper.last("limit 5");
+
         // 如果用户已登录，排除当前用户
         if (currentUser != null) {
             wrapper.ne("id", currentUser.getId());
         }
-        
+
         List<User> list = userMapper.selectList(wrapper);
         if (list.isEmpty()) {
             return Collections.emptyList();
@@ -198,15 +235,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 3.1 用户关注作者信息
         QueryWrapper<Follow> followQueryWrapper = new QueryWrapper<>();
         followQueryWrapper.eq("follower_id", user.getId());
-        followQueryWrapper.eq("follow_type","user");
+        followQueryWrapper.eq("follow_type", "user");
         List<Long> followerIds =
                 followMapper.selectList(followQueryWrapper).stream().map(Follow::getFollowedId).toList();
         List<User> followers = Collections.emptyList();
         if (!followerIds.isEmpty()) {
-           followers =  userMapper.selectBatchIds(followerIds);
-           followers.forEach(u -> {
-               u.setFollowed(true);
-           });
+            followers = userMapper.selectBatchIds(followerIds);
+            followers.forEach(u -> {
+                u.setFollowed(true);
+            });
         }
         vo.setFollowerList(followers);
         vo.setFollowerCount((long) followers.size());
@@ -214,12 +251,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 3.2 用户粉丝信息
         followQueryWrapper = new QueryWrapper<>();
         followQueryWrapper.eq("followed_id", user.getId());
-        followQueryWrapper.eq("follow_type","user");
+        followQueryWrapper.eq("follow_type", "user");
         List<Long> fansIds =
                 followMapper.selectList(followQueryWrapper).stream().map(Follow::getFollowerId).toList();
         List<User> fansList = Collections.emptyList();
         if (!fansIds.isEmpty()) {
-            fansList =  userMapper.selectBatchIds(fansIds);
+            fansList = userMapper.selectBatchIds(fansIds);
             fansList.forEach(u -> {
                 u.setFollowed(false);
             });
@@ -264,7 +301,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         } catch (Exception e) {
             // 用户未登录或获取用户信息失败，忽略
         }
-        
+
         if (currentUser != null && !currentUser.getId().equals(userId)) {
             QueryWrapper<Follow> followCheckWrapper = new QueryWrapper<>();
             followCheckWrapper.eq("follower_id", currentUser.getId());
@@ -319,19 +356,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (existingUser == null) {
             throw new BusinessException("用户不存在");
         }
-        
+
         // 2. 设置更新时间
         user.setUpdateTime(LocalDateTime.now());
-        
+
         // 3. 如果修改了密码，需要重新加密
-        if (user.getPassword() != null && !user.getPassword().isEmpty() && 
-            !user.getPassword().equals(existingUser.getPassword())) {
+        if (user.getPassword() != null && !user.getPassword().isEmpty() &&
+                !user.getPassword().equals(existingUser.getPassword())) {
             user.setPassword(md5.digestHex16(user.getPassword()));
         } else {
             // 如果没有修改密码，保留原密码
             user.setPassword(existingUser.getPassword());
         }
-        
+
         // 4. 如果修改了性别，可能需要更新头像
         if (user.getGender() != null && !user.getGender().equals(existingUser.getGender())) {
             user.setAvatar(AutoFillingAvatar.getRandomAvatar(user.getGender()));
@@ -339,17 +376,57 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             // 如果没有设置头像，使用默认头像
             user.setAvatar(existingUser.getAvatar());
         }
-        
+
         // 5. 保留创建时间
         user.setCreateTime(existingUser.getCreateTime());
-        
+
         // 6. 更新用户信息
         boolean success = updateById(user);
         if (!success) {
             throw new BusinessException("更新用户资料失败");
         }
-        
+
         // 7. 返回更新后的用户信息
         return getById(user.getId());
+    }
+
+    @Override
+    public IPage<UserRoleVO> getUserListAndRole(Page<UserRoleVO> page, Long roleId, UserSearchParam searchParam) {
+        return userMapper.selectUsersWithRole(page, roleId, searchParam);
+    }
+
+    /**
+     * 获取用户拥有的权限标志
+     */
+    private Set<Permission> getUserPermissions(Long userId) {
+        QueryWrapper<UserRole> wrapper = new QueryWrapper<UserRole>().eq("user_id", userId);
+        List<UserRole> userRoleList = userRoleMapper.selectList(wrapper);
+        Set<Long> rolesId = userRoleList.stream().map(UserRole::getRoleId).collect(Collectors.toSet());
+        if (rolesId.isEmpty()) {
+            return Collections.emptySet();
+        }
+        LambdaQueryWrapper<RolePermission> qw =
+                new LambdaQueryWrapper<RolePermission>().in(RolePermission::getRoleId, rolesId);
+        Set<Long> permissionIds =
+                rolePermissionMapper.selectList(qw).stream().map(RolePermission::getPermissionId).collect(Collectors.toSet());
+        List<Permission> permissions = permissionMapper.selectBatchIds(permissionIds);
+        return new HashSet<>(permissions);
+    }
+
+    /**
+     * 获取所有的路由权限
+     */
+    private Map<String, String> getRouteMap() {
+        LambdaQueryWrapper<Permission> wrapper = new LambdaQueryWrapper<Permission>()
+                .eq(Permission::getType, "MENU")
+                .eq(Permission::getStatus, 1);
+        List<Permission> permissions = permissionMapper.selectList(wrapper);
+
+        return permissions.stream()
+                .filter(p -> p.getPath() != null && p.getCode() != null)
+                .collect(Collectors.toMap(
+                        Permission::getPath,
+                        Permission::getCode
+                ));
     }
 }

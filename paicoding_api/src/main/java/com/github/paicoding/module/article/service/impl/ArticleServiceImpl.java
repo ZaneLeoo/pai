@@ -270,11 +270,28 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
             vo.setTagArticles(ids.size());
             vo.setArticleList(articleList);
+
+            // 查询主题关注的用户数
+            List<Follow> topicFollowers =
+                    followMapper.selectList(new QueryWrapper<Follow>().in("followed_id", tagId));
+            vo.setTagFollowers(topicFollowers.size());
         }
 
         // 2.获取推荐的作者信息
         List<User> recommendedAuthorList = userServiceImpl.getRecommendedAuthorList();
         vo.setRecommendUserList(recommendedAuthorList);
+
+        // 3.获取作者对本主题的关注状态
+        if (SecurityUtil.getCurrentUser() == null){
+            vo.setIsFollowed(false);
+        }else {
+            QueryWrapper<Follow> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("follower_id", SecurityUtil.getCurrentUserId());
+            queryWrapper.eq("followed_id", tagId);
+            Follow follow = followMapper.selectOne(queryWrapper);
+            vo.setIsFollowed(follow != null);
+        }
+
         return vo;
     }
 
@@ -310,10 +327,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
         // 3.查询对应主题对应的文章信息
         Set<Long> followTopicIds = userFollowTags.stream().map(Follow::getFollowedId).collect(Collectors.toSet());
-
-//        List<ArticleTag> articleList = articleTagService.listByIds(followTopicIds);
+        List<ArticleTag> articleList =
+                articleTagService.list(new QueryWrapper<ArticleTag>().in("tag_id", followTopicIds));
         Set<Long> articleIds = articleList.stream().map(ArticleTag::getArticleId).collect(Collectors.toSet());
-        List<Article> articles = listByIds(articleIds);
+        List<Article> articles = articleMapper.getArticleList(articleIds);
 
         // 4.转换Item并返回
         return this.convertToArticleListItems(articles);

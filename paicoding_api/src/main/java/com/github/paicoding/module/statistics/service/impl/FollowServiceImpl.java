@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.paicoding.common.config.RabbitMQConfig;
 import com.github.paicoding.common.constants.ScoreConstants;
 import com.github.paicoding.common.util.mq.MQUtil;
+import com.github.paicoding.common.util.user.SecurityUtil;
 import com.github.paicoding.module.notification.constants.NotificationConstants;
 import com.github.paicoding.module.notification.dto.NotificationMessage;
 import com.github.paicoding.module.rank.dto.ScoreMessage;
@@ -34,7 +35,7 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
     @Transactional
     public ActionDTO follow(com.github.paicoding.module.statistics.request.ActionRequestDTO request) {
         // 1.关注/取消关注
-        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User user = SecurityUtil.getCurrentUser();
         if (request.getStatus()){
             QueryWrapper<Follow> wrapper = new QueryWrapper<>();
             wrapper.eq("follower_id", user.getId());

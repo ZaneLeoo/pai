@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.github.paicoding.module.article.entity.Article;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -13,14 +14,14 @@ import java.util.List;
 public interface ArticleMapper extends BaseMapper<Article> {
 
     /**
-     * 根据 tagId 返回对应的文章(按照点赞数排行)
+     * 根据 articleIds 返回对应的文章列表(按照点赞数排行)
      * @param articleIds 文章id列表
      * @param limit 返回的条数 -1表示所有
      * @return  对应的文章列表
      */
     List<Article> getArticlesWithLikeCount(List<Long> articleIds,Integer limit);
 
-    List<Article> getArticleList(List<Long> articleIds);
+    List<Article> getArticleList(Collection<Long> articleIds);
 
     Article getById(@Param("id") Long id);
 }

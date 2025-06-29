@@ -1,9 +1,11 @@
 package com.github.paicoding.module.user.entity;
 
+import com.alibaba.excel.annotation.ExcelProperty;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -11,6 +13,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -72,12 +76,17 @@ public class User {
     /**
      * 创建时间
      */
-    private LocalDateTime createTime;
+    private LocalDate createTime;
 
     /**
      * 更新时间
      */
     private LocalDateTime updateTime;
+
+    /**
+     * 用户状态
+     */
+    private Integer status;
 
     /**
      * 方便返回给前端存储

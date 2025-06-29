@@ -4,7 +4,10 @@ server:
   servlet:
     session:
       timeout: 5m # 会话有效期 5 分钟
-
+# 图片上传和访问路径
+image:
+  upload: D:/Server_Data/Paicoding/Image/
+  base-access-url: http://localhost:8080/images/
 # Spring 核心配置
 spring:
   datasource: # MySQL 数据源配置

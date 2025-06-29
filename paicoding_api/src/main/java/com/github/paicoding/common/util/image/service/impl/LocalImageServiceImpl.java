@@ -5,6 +5,7 @@ import cn.hutool.core.util.IdUtil;
 import com.github.paicoding.common.entity.Response;
 import com.github.paicoding.common.util.image.entity.ImageDTO;
 import com.github.paicoding.common.util.image.service.ImageService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,8 +19,11 @@ import java.io.IOException;
 @Service
 public class LocalImageServiceImpl implements ImageService {
 
-    private final String BASE_IMAGE_SAVE_URL = "D:\\Server_Data\\Paicoding\\Image\\";
-    private final String BASE_IMAGE_ACCESS_URL = "http://localhost:8080/images/";
+    @Value("${image.upload}")
+    private String BASE_IMAGE_SAVE_URL;
+
+    @Value("${image.base-access-url}")
+    private String BASE_IMAGE_ACCESS_URL;
 
     @Override
     public String upload(MultipartFile file) throws IOException {

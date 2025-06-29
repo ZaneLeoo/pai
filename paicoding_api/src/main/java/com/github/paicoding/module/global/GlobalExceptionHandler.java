@@ -1,4 +1,5 @@
 package com.github.paicoding.module.global;
+import com.github.paicoding.common.config.ResultCode;
 import com.github.paicoding.common.entity.Response;
 import com.github.paicoding.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +16,8 @@ public class GlobalExceptionHandler {
     // 处理业务异常
     @ExceptionHandler(BusinessException.class)
     public Response<String> handleBusinessException(BusinessException ex) {
-        return Response.error(ex.getMsg(), null);
+        log.error("业务异常: ", ex);
+        return Response.error(ex.getMsg());
     }
 
     // 处理 Java 原生异常

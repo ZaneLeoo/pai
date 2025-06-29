@@ -3,6 +3,7 @@ package com.github.paicoding.admin.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.github.paicoding.admin.dto.UserQueryDTO;
+import com.github.paicoding.common.config.ResultCode;
 import com.github.paicoding.common.entity.Response;
 import com.github.paicoding.module.user.entity.User;
 import com.github.paicoding.module.user.service.UserService;
@@ -21,7 +22,7 @@ public class AdminUserController {
 
     @GetMapping("/list")
     public Response<Page<User>> listUsers(UserQueryDTO queryDTO) {
-        Page<User> page = new Page<>(queryDTO.getPageNum(), queryDTO.getPageSize());
+        Page<User> page = new Page<>(queryDTO.getCurrent(), queryDTO.getPageSize());
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
 
         // 动态添加查询条件
@@ -60,7 +61,7 @@ public class AdminUserController {
     @PutMapping("/update")
     public Response<Void> updateUser(@RequestBody User newUser) {
         userService.updateById(newUser);
-        return Response.success("更新用户资料成功", null);
+        return Response.success(ResultCode.SUCCESS, null);
     }
 
     @PutMapping("/status")
@@ -74,9 +75,9 @@ public class AdminUserController {
         return Response.error("功能未实现");
     }
 
-    @DeleteMapping("/{id}")
-    public Response<Void> deleteUser(@PathVariable Long id) {
+    @DeleteMapping()
+    public Response<Void> deleteUser(@RequestParam Long id) {
         boolean success = userService.removeById(id);
-        return success ? Response.success("删除成功", null) : Response.error("删除失败");
+        return success ? Response.success(ResultCode.SUCCESS, null) : Response.error("删除失败");
     }
 } 

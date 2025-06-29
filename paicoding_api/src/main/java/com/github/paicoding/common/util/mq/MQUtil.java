@@ -21,17 +21,14 @@ public class MQUtil {
      * @param exchange   交换机
      * @param routingKey 路由键
      * @param message    消息内容
-     * @return 是否发送成功
      */
-    public boolean sendMessage(String exchange, String routingKey, Object message) {
+    public void sendMessage(String exchange, String routingKey, Object message) {
         try {
             log.info("发送MQ消息: exchange={}, routingKey={}, message={}", exchange, routingKey, message);
             rabbitTemplate.convertAndSend(exchange, routingKey, message);
-            return true;
         } catch (AmqpException e) {
             log.error("MQ消息发送失败: exchange={}, routingKey={}, message={}, error={}", 
                     exchange, routingKey, message, e.getMessage(), e);
-            return false;
         }
     }
 } 

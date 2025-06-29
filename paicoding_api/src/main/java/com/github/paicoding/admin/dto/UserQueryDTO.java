@@ -11,7 +11,7 @@ public class UserQueryDTO {
     /**
      * 页码
      */
-    private Integer pageNum = 1;
+    private Integer current = 1;
 
     /**
      * 每页大小

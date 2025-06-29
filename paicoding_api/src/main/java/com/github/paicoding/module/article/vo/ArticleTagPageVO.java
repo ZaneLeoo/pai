@@ -39,4 +39,9 @@ public class ArticleTagPageVO {
      * 推荐的作者(暂定5个)
      */
     private List<User> recommendUserList;
+
+    /**
+     * 用户对主题的关注状态
+     */
+    private Boolean isFollowed;
 }

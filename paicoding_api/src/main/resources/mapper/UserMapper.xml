@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.github.paicoding.module.user.mapper.UserMapper">
+
+    <select id="selectUsersWithRole" resultType="com.github.paicoding.module.user.vo.UserRoleVO" parameterType="map">
+        SELECT u.id,
+        u.username,
+        u.email,
+        u.avatar,
+        u.gender,
+        IF(ur.role_id IS NULL, FALSE, TRUE) AS has_role
+        FROM users u
+        LEFT JOIN user_roles ur ON u.id = ur.user_id AND ur.role_id = #{roleId}
+        <where>
+            <if test="searchParams.username != null and searchParams.username != ''">
+                AND u.username LIKE CONCAT('%', #{searchParams.username}, '%')
+            </if>
+            <if test="searchParams.gender != null and searchParams.gender != ''">
+                AND u.gender = #{searchParams.gender}
+            </if>
+            <if test="searchParams.hasRole != null">
+                <if test="searchParams.hasRole == true">
+                    AND ur.role_id IS NOT NULL
+                </if>
+                <if test="searchParams.hasRole == false">
+                    AND ur.role_id IS NULL
+                </if>
+            </if>
+        </where>
+        ORDER BY u.id
+    </select>
+
+
+
+</mapper>
